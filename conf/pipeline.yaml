@@ -1,0 +1,36 @@
+# Pipeline configuration.
+# Values support ${ENV_VAR:-default} expansion so the same file works for
+# the local Docker stack (HDFS + MinIO) and for AWS (HDFS + Amazon S3).
+
+paths:
+  raw: ${RAW_PATH:-hdfs://namenode:9000/data/raw}
+  bronze: ${LAKEHOUSE_PATH:-s3a://lakehouse}/bronze
+  silver: ${LAKEHOUSE_PATH:-s3a://lakehouse}/silver
+  gold: ${LAKEHOUSE_PATH:-s3a://lakehouse}/gold
+  quality: ${LAKEHOUSE_PATH:-s3a://lakehouse}/quality
+
+spark:
+  # Shuffle partitions used by the optimized pipeline (AQE coalesces further).
+  shuffle_partitions: 64
+  # Number of Parquet files written per output partition (avoids small files).
+  output_files_per_partition: 4
+  # Tables below this size are broadcast instead of shuffled.
+  broadcast_threshold_mb: 64
+
+skew:
+  # A join key is "hot" if it holds at least this share of the fact rows.
+  hot_key_min_share: 0.005
+  max_hot_keys: 50
+  # Number of salt buckets a hot key is spread across.
+  salt_buckets: 16
+
+quality:
+  bronze:
+    min_rows: 1000
+  silver:
+    min_rows: 1000
+    max_reject_ratio: 0.02
+    max_unknown_customer_ratio: 0.01
+  gold:
+    min_rows: 1
+    revenue_tolerance: 0.01
